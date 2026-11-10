@@ -8,3 +8,4 @@ build/
 *.spec
 zbrush_bridge/data/command.*
 zbrush_bridge/data/last_result.json
+NOTES.md
