@@ -1,0 +1,1 @@
+Pasta onde o app grava o comando para a ponte (command.txt / command.json).

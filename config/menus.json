@@ -1,0 +1,52 @@
+{
+  "bridge": {
+    "protocol": "zscript",
+    "trigger_hotkey": "<ctrl>+<alt>+<shift>+j",
+    "command_dir": "zbrush_bridge/data"
+  },
+  "appearance": {
+    "radius": 110,
+    "inner_radius": 36,
+    "slot_size": 58,
+    "ring_color": "#1E1E22",
+    "slot_color": "#2B2B31",
+    "accent_color": "#FF8A3D",
+    "text_color": "#F2F2F2",
+    "opacity": 0.94,
+    "font_size": 9
+  },
+  "selection": {
+    "mode": "hold",
+    "tap_ms": 220,
+    "hover_dwell_ms": 0,
+    "flick": true,
+    "flick_margin": 30
+  },
+  "menus": [
+    {
+      "name": "Sculpt",
+      "hotkey": "<alt>+q",
+      "slots": [
+        { "label": "Standard", "action": { "type": "press", "item": "Brush:Standard" } },
+        { "label": "Move", "action": { "type": "press", "item": "Brush:Move" } },
+        { "label": "Clay Buildup", "action": { "type": "press", "item": "Brush:ClayBuildup" } },
+        { "label": "Dam Standard", "action": { "type": "press", "item": "Brush:Dam_Standard" } },
+        { "label": "hPolish", "action": { "type": "press", "item": "Brush:hPolish" } },
+        { "label": "Trim Dynamic", "action": { "type": "press", "item": "Brush:TrimDynamic" } },
+        { "label": "Inflate", "action": { "type": "press", "item": "Brush:Inflat" } },
+        { "label": "Pinch", "action": { "type": "press", "item": "Brush:Pinch" } }
+      ]
+    },
+    {
+      "name": "Tools",
+      "hotkey": "<alt>+w",
+      "slots": [
+        { "label": "Symmetry X", "action": { "type": "keys", "keys": "x" } },
+        { "label": "PolyFrame", "action": { "type": "keys", "keys": "<shift>+f" } },
+        { "label": "Frame", "action": { "type": "keys", "keys": "f" } },
+        { "label": "Divide", "action": { "type": "keys", "keys": "<ctrl>+d" } },
+        { "label": "Undo", "action": { "type": "keys", "keys": "<ctrl>+z" } }
+      ]
+    }
+  ]
+}

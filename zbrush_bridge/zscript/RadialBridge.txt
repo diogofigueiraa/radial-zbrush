@@ -1,0 +1,112 @@
+// RadialBridge.txt
+// Ponte do menu radial para ZBrush 2023/2024 (ZScript).
+//
+// Carregar:  ZScript > Load > este arquivo. O ZBrush compila para RadialBridge.zsc.
+// Carregar sempre: copie o RadialBridge.zsc para a pasta ZStartup\ZPlugs64 do ZBrush.
+//
+// O app externo grava uma linha em <rbDir>command.txt, no formato:
+//     press|Brush:Move
+//     load|C:/caminho/Clay.ZBP
+// e aperta o atalho do botao Run. O Run le a linha, executa e apaga o arquivo.
+
+// Pasta do comando. Precisa ser a mesma do "command_dir" no config/menus.json.
+// Use barras normais (/) e termine com /.
+[VarDef, rbDir, "J:/CODING/radial-zbrush/zbrush_bridge/data/"]
+
+// Botao de carregar brush. Confirme com o botao "Check" (Fase 0).
+[VarDef, rbLoadItem, "Brush:Load Brush"]
+
+[VarDef, rbFile, ""]
+[VarDef, rbLine, ""]
+[VarDef, rbKind, ""]
+[VarDef, rbArg, ""]
+[VarDef, rbSep, 0]
+[VarDef, rbSize, 0]
+[VarDef, rbAsk, ""]
+
+// Mostra uma mensagem rapida (1,5 s).
+[RoutineDef, rbShow,
+	[Note, rbMsg, , 1.5]
+, rbMsg]
+
+// Executa o comando que esta em rbLine ("tipo|argumento").
+[RoutineDef, rbDo,
+	[VarSet, rbSep, [StrFind, "|", rbLine]]
+	[If, rbSep < 1,
+		[RoutineCall, rbShow, [StrMerge, "Radial: comando invalido: ", rbLine]]
+	,
+		[VarSet, rbKind, [StrExtract, rbLine, 0, rbSep - 1]]
+		[VarSet, rbArg, [StrExtract, rbLine, rbSep + 1, [StrLength, rbLine] - 1]]
+		[If, [StrFind, "press", rbKind] == 0,
+			[If, [IExists, rbArg],
+				[IPress, rbArg]
+			,
+				[RoutineCall, rbShow, [StrMerge, "Radial: item nao existe: ", rbArg]]
+			]
+		]
+		[If, [StrFind, "load", rbKind] == 0,
+			[If, [FileExists, rbArg],
+				[If, [IExists, rbLoadItem],
+					[FileNameSetNext, rbArg]
+					[IPress, rbLoadItem]
+				,
+					[RoutineCall, rbShow, [StrMerge, "Radial: botao nao encontrado: ", rbLoadItem]]
+				]
+			,
+				[RoutineCall, rbShow, [StrMerge, "Radial: arquivo nao encontrado: ", rbArg]]
+			]
+		]
+	]
+]
+
+// Le o command.txt, apaga e executa.
+[RoutineDef, rbRun,
+	[VarSet, rbFile, [StrMerge, rbDir, "command.txt"]]
+	[If, [FileExists, rbFile],
+		[If, [MemGetSize, rbMem], [MemDelete, rbMem]]
+		[VarSet, rbSize, [MemCreateFromFile, rbMem, rbFile]]
+		[VarSet, rbLine, ""]
+		[If, rbSize > 0,
+			[MemReadString, rbMem, rbLine, 0, 1]
+			[MemDelete, rbMem]
+		]
+		[FileDelete, rbFile]
+		[RoutineCall, rbDo]
+	,
+		[RoutineCall, rbShow, "Radial: nenhum comando pendente"]
+	]
+]
+
+[ISubPalette, "ZPlugin:Radial Bridge"]
+
+// Botao principal. Atribua o atalho: Ctrl+Alt+clique nele e aperte a combinacao
+// do "trigger_hotkey" do config. Depois salve em Preferences > Hotkeys.
+[IButton, "ZPlugin:Radial Bridge:Run", "Executa o comando do menu radial. Atribua o atalho com Ctrl+Alt+clique.",
+	[RoutineCall, rbRun]
+, 0, 1]
+
+// --- Testes da Fase 0 ---
+
+[IButton, "ZPlugin:Radial Bridge:Test Press", "Fase 0: pede um item path (ex.: Brush:Move) e aperta.",
+	[VarSet, rbAsk, [StrAsk, "Brush:Move", "Item path do brush"]]
+	[If, [StrLength, rbAsk] > 0,
+		[VarSet, rbLine, [StrMerge, "press|", rbAsk]]
+		[RoutineCall, rbDo]
+	]
+, 0, 0.5]
+
+[IButton, "ZPlugin:Radial Bridge:Test Load", "Fase 0: pede o caminho de um .ZBP e carrega.",
+	[VarSet, rbAsk, [StrAsk, "", "Caminho completo do .ZBP"]]
+	[If, [StrLength, rbAsk] > 0,
+		[VarSet, rbLine, [StrMerge, "load|", rbAsk]]
+		[RoutineCall, rbDo]
+	]
+, 0, 0.5]
+
+[IButton, "ZPlugin:Radial Bridge:Check", "Fase 0: confirma se o botao de carregar brush existe.",
+	[If, [IExists, rbLoadItem],
+		[RoutineCall, rbShow, [StrMerge, "OK, existe: ", rbLoadItem]]
+	,
+		[RoutineCall, rbShow, [StrMerge, "NAO existe: ", rbLoadItem]]
+	]
+, 0, 1]

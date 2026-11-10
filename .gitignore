@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+config/library.json
+dist/
+build/
+*.spec
+zbrush_bridge/data/command.*
+zbrush_bridge/data/last_result.json
