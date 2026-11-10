@@ -108,7 +108,11 @@ In `config/menus.json`, use `"protocol": "python"`. In ZBrush, load `zbrush_brid
 - `slots[].icon`: path to a PNG (optional). Without an icon, the slot shows its text.
 - `slots[].color`: slot color (optional).
 
-After editing, use **Reload config** in the tray.
+After editing the JSON by hand, use **Reload config** in the tray.
+
+### Menu editor
+
+Tray icon > **Edit menus…** opens the editor: add, remove and reorder menus and slots, set a menu's name and hotkey (click the field and press the combination), and set each slot's label, action, color and icon. **Save & reload** validates, writes `config/menus.json` and reloads the app. Appearance, selection and bridge settings are still edited in the JSON.
 
 ### Brush library
 
@@ -153,6 +157,8 @@ radial/                       external app
   bridge_client.py            writes the command and fires the bridge
   config.py                   JSON loading and validation
   library.py                  .ZBP brush scan
+  editor.py                   menu editor window (PySide6)
+  editing.py                  editor logic without Qt (hotkey conversion, list ops)
 zbrush_bridge/
   zscript/RadialBridge.txt    bridge for ZBrush 2023/2024
   radial_bridge.py            bridge for ZBrush 2026
@@ -164,6 +170,5 @@ tests/                        automated tests
 
 ## Next steps (from the plan)
 
-- Phase 3: a UI to edit menus without touching the JSON.
 - Phase 4: a library popup with search and drag-to-slot.
 - Phase 5: child slots, tags, live appearance controls, alphas, textures and materials.

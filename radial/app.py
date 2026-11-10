@@ -10,12 +10,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, Qt
 from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from . import config as config_mod
 from .bridge_client import ActionRunner
+from .editor import MenuEditor
 from .hotkeys import HotkeyService, send_keys
 from .overlay import RadialOverlay
 from .winfocus import ensure_zbrush_foreground
@@ -47,6 +48,7 @@ class RadialApp(QObject):
         self.runner: ActionRunner | None = None
         self.tray: QSystemTrayIcon | None = None
         self._open_index: int | None = None
+        self.editor: MenuEditor | None = None
 
     # --- load / reload ---------------------------------------------------
     def load(self) -> None:
@@ -84,6 +86,17 @@ class RadialApp(QObject):
         except config_mod.ConfigError as exc:
             QMessageBox.warning(None, "Radial — config error", str(exc))
 
+    def open_editor(self) -> None:
+        if self.editor and self.editor.isVisible():
+            self.editor.raise_()
+            self.editor.activateWindow()
+            return
+        # The editor works on a copy of the config and writes the file on Save.
+        self.editor = MenuEditor(self.cfg, self.config_path)
+        self.editor.setAttribute(Qt.WA_DeleteOnClose)
+        self.editor.saved.connect(self.reload)
+        self.editor.show()
+
     # --- events ------------------------------------------------------------
     def _on_menu_pressed(self, idx: int) -> None:
         mode = self.cfg["selection"]["mode"]
@@ -119,10 +132,13 @@ class RadialApp(QObject):
         self.tray = QSystemTrayIcon(_tray_icon(self.cfg["appearance"]["accent_color"]))
         self.tray.setToolTip("Radial menu for ZBrush")
         menu = QMenu()
+        act_edit = QAction("Edit menus…", menu)
+        act_edit.triggered.connect(self.open_editor)
         act_reload = QAction("Reload config", menu)
         act_reload.triggered.connect(self.reload)
         act_quit = QAction("Quit", menu)
         act_quit.triggered.connect(self.quit)
+        menu.addAction(act_edit)
         menu.addAction(act_reload)
         menu.addSeparator()
         menu.addAction(act_quit)
