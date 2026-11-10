@@ -1,29 +1,29 @@
 @echo off
 cd /d "%~dp0"
 
-REM Na primeira vez: cria o ambiente virtual (.venv) e instala as dependencias.
+REM First run: creates the virtual environment (.venv) and installs the dependencies.
 if not exist ".venv\Scripts\python.exe" (
-    echo [radial] Primeira execucao: criando o ambiente virtual em .venv ...
+    echo [radial] First run: creating the virtual environment in .venv ...
     python -m venv .venv
     if errorlevel 1 (
-        echo [radial] Nao consegui criar o .venv. O Python esta instalado e no PATH?
+        echo [radial] Could not create .venv. Is Python installed and on PATH?
         pause
         exit /b 1
     )
 )
 
-REM Instala as dependencias se ainda faltarem.
+REM Installs the dependencies if they are still missing.
 ".venv\Scripts\python.exe" -c "import PySide6, pynput" 2>nul
 if errorlevel 1 (
-    echo [radial] Instalando dependencias: PySide6 e pynput ...
+    echo [radial] Installing dependencies: PySide6 and pynput ...
     ".venv\Scripts\python.exe" -m pip install -r requirements.txt
     if errorlevel 1 (
-        echo [radial] A instalacao falhou. Veja a mensagem acima.
+        echo [radial] Installation failed. See the message above.
         pause
         exit /b 1
     )
 )
 
-echo [radial] Iniciando o menu radial. Feche esta janela para encerrar.
+echo [radial] Starting the radial menu. Close this window to quit.
 ".venv\Scripts\python.exe" -m radial %*
 pause

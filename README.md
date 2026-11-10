@@ -1,39 +1,41 @@
 # Radial ZBrush
 
-Menu radial para o ZBrush, feito como projeto de estudo e inspirado no RadialZ. Você aperta um atalho, o menu abre no cursor, e você escolhe um brush ou um comando.
+A radial menu for ZBrush, built as a study project and inspired by RadialZ. You press a hotkey, the menu opens at the cursor, and you pick a brush or a command.
 
-Funciona no **ZBrush 2023/2024**, com a ponte em ZScript, e no **ZBrush 2026**, com a ponte em Python.
+It works with **ZBrush 2023/2024** through a ZScript bridge, and with **ZBrush 2026** through a Python bridge.
 
-## Como funciona
+## How it works
 
-São duas partes:
+There are two parts:
 
-1. **App externo** (`radial/`, Python + PySide6): escuta os atalhos, desenha o menu e decide o que foi escolhido.
-2. **Ponte no ZBrush**: executa o comando dentro do ZBrush.
-   - ZBrush 2023/2024: `zbrush_bridge/zscript/RadialBridge.txt` (ZScript), com `"protocol": "zscript"` no config.
-   - ZBrush 2026: `zbrush_bridge/radial_bridge.py` (Python), com `"protocol": "python"` no config.
+1. **External app** (`radial/`, Python + PySide6): listens for hotkeys, draws the menu and decides what was chosen.
+2. **Bridge inside ZBrush**: runs the command inside ZBrush.
+   - ZBrush 2023/2024: `zbrush_bridge/zscript/RadialBridge.txt` (ZScript), with `"protocol": "zscript"` in the config.
+   - ZBrush 2026: `zbrush_bridge/radial_bridge.py` (Python), with `"protocol": "python"` in the config.
 
-O ZBrush não tem um jeito de "escutar" comandos em segundo plano. Por isso a ponte é um **botão** (`ZPlugin > Radial Bridge > Run`) com um atalho. O app grava o comando em `zbrush_bridge/data/` e aperta esse atalho. O botão lê o comando, executa e apaga o arquivo.
+ZBrush has no way to "listen" for commands in the background. So the bridge is a **button** (`ZPlugin > Radial Bridge > Run`) with a hotkey. The app writes the command to `zbrush_bridge/data/` and presses that hotkey. The button reads the command, runs it and deletes the file.
 
 ```
-Alt+Q -> menu no cursor -> escolha -> data/command.txt -> Ctrl+Alt+Shift+J -> botão Run -> brush troca
+Alt+Q -> menu at cursor -> choice -> data/command.txt -> Ctrl+Alt+Shift+J -> Run button -> brush changes
 ```
 
-## Tipos de ação dos slots
+The app sends keys with the Win32 `SendInput` API (physical keys with scan codes), because ZBrush ignores the Unicode characters pynput sends for letters. Before sending, it also brings the ZBrush window to the foreground.
 
-| `type` | Campo | O que faz |
+## Slot action types
+
+| `type` | Field | What it does |
 | --- | --- | --- |
-| `press` | `item` | Aperta um item da interface do ZBrush pelo item path (ex.: `Brush:Move`) |
-| `brush_file` | `path` | Carrega um brush de um arquivo `.ZBP` |
-| `keys` | `keys` | Só aperta teclas: atalhos nativos do ZBrush (ex.: `x`, `<shift>+f`, `b s t`) |
+| `press` | `item` | Presses a ZBrush interface item by item path (e.g. `Brush:Move`) |
+| `brush_file` | `path` | Loads a brush from a `.ZBP` file |
+| `keys` | `keys` | Only presses keys: native ZBrush hotkeys (e.g. `x`, `<shift>+f`, `b s t`) |
 
-`keys` não usa a ponte, então funciona mesmo antes de a ponte estar pronta.
+`keys` does not use the bridge, so it works even before the bridge is set up.
 
-Limites da ponte ZScript: o comando precisa ter no máximo 250 caracteres e só pode usar caracteres ASCII (sem acentos) no caminho ou no item path. O app recusa o comando e avisa no console se passar disso.
+ZScript bridge limits: the command can be at most 250 characters long and may only use ASCII characters (no accents) in the path or item path. The app rejects the command and warns in the console if it goes over.
 
-## Instalação
+## Installation
 
-Requisitos: Windows e Python 3.11 ou mais novo.
+Requirements: Windows and Python 3.11 or newer.
 
 ```bat
 cd J:\CODING\radial-zbrush
@@ -42,123 +44,126 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Passo a passo (ZBrush 2024)
+`run.bat` does all of this automatically on the first run.
 
-### 1. Carregar a ponte
+## Step by step (ZBrush 2024)
 
-1. Abra `zbrush_bridge/zscript/RadialBridge.txt` e confira a linha `rbDir`. Ela precisa apontar para a pasta `zbrush_bridge/data/` do projeto, com barras normais e `/` no final. O valor padrão já é `J:/CODING/radial-zbrush/zbrush_bridge/data/`.
-2. No ZBrush: `ZScript > Load` e escolha `RadialBridge.txt`. O ZBrush compila o arquivo e cria `RadialBridge.zsc` ao lado.
-3. Abra `ZPlugin > Radial Bridge`.
+### 1. Load the bridge
 
-Se o ZBrush mostrar um erro de sintaxe ao carregar, copie a mensagem: ela diz a linha.
+1. Open `zbrush_bridge/zscript/RadialBridge.txt` and check the `rbDir` line. It must point to the project's `zbrush_bridge/data/` folder, with forward slashes and a trailing `/`. The default is already `J:/CODING/radial-zbrush/zbrush_bridge/data/`.
+2. In ZBrush: `ZScript > Load` and pick `RadialBridge.txt`. ZBrush compiles the file and creates `RadialBridge.zsc` next to it.
+3. Open `ZPlugin > Radial Bridge`.
 
-### 2. Fase 0: testar dentro do ZBrush
+If ZBrush shows a syntax error on load, copy the message: it includes the line number.
 
-Os botões de teste ficam em `ZPlugin > Radial Bridge`:
+### 2. Phase 0: test inside ZBrush
 
-- **Check**: diz se o botão de carregar brush (`Brush:Load Brush`) existe. Se não existir, descubra o nome certo e mude `rbLoadItem` no `RadialBridge.txt`.
-- **Test Press**: pede um item path (ex.: `Brush:Move`) e aperta. Use para confirmar os nomes dos brushes do `config/menus.json`.
-- **Test Load**: pede o caminho de um `.ZBP` e carrega.
+The test buttons live in `ZPlugin > Radial Bridge`:
 
-O item path é `Paleta:Nome do botão`, com o nome como aparece na interface (ex.: `Brush:Move`). Se um nome não funcionar no Test Press, tente variações sem espaços.
+- **Check**: tells you whether the Load Brush button (`Brush:Load Brush`) exists. If it does not, find the right name and change `rbLoadItem` in `RadialBridge.txt`.
+- **Test Press**: asks for an item path (e.g. `Brush:Move`) and presses it. Use it to confirm the brush names in `config/menus.json`.
+- **Test Load**: asks for the path of a `.ZBP` and loads it.
 
-### 3. Atribuir o atalho do botão Run
+The item path is `Palette:Button name`, with the name as it appears in the interface (e.g. `Brush:Move`). If a name does not work in Test Press, try variations without spaces or with underscores (for example `Brush:Dam_Standard`).
 
-1. Faça **Ctrl+Alt+clique** no botão **Run** e aperte **Ctrl+Alt+Shift+J**. Esse é o `trigger_hotkey` do config.
-2. Salve em `Preferences > Hotkeys > Store`.
+### 3. Assign the Run button hotkey
 
-Se o ZBrush não aceitar essa combinação, use outra e troque também o `trigger_hotkey` em `config/menus.json`.
+1. **Ctrl+Alt+click** the **Run** button and press **Ctrl+Alt+Shift+J**. This is the config's `trigger_hotkey`.
+2. Save it in `Preferences > Hotkeys > Store`.
 
-### 4. Rodar o app
+If ZBrush does not accept that combination, use another one and also change `trigger_hotkey` in `config/menus.json`.
+
+### 4. Run the app
 
 ```bat
 run.bat
 ```
 
-Ou `python -m radial`. Um ícone aparece na bandeja do Windows, com as opções **Recarregar config** e **Sair**.
+Or `python -m radial`. An icon shows up in the Windows tray, with **Reload config** and **Quit** options.
 
-Com o ZBrush em foco:
+With ZBrush focused:
 
-- **Alt+Q** abre o menu Sculpt e **Alt+W** abre o menu Tools.
-- **Modo hold** (padrão): segure o atalho, aponte e solte.
-- Um **toque rápido** deixa o menu aberto; aí é só clicar.
-- **Flick**: arraste o mouse para além do anel na direção do slot.
-- **Esc** ou **botão direito** fecha o menu.
+- **Alt+Q** opens the Sculpt menu and **Alt+W** opens the Tools menu.
+- **Hold mode** (default): hold the hotkey, point and release.
+- A **quick tap** keeps the menu open; then just click.
+- **Flick**: move the mouse past the ring in the direction of the slot.
+- **Esc** or **right click** closes the menu.
 
-### 5. Carregar a ponte sempre que abrir o ZBrush
+### 5. Load the bridge every time ZBrush starts
 
-Copie o `RadialBridge.zsc` gerado para a pasta `ZStartup\ZPlugs64` dentro da instalação do ZBrush 2024 (em `C:\Program Files\Maxon ZBrush 2024\`). Plugins nessa pasta carregam ao abrir o ZBrush. Se você mudar o `.txt`, carregue de novo e copie o `.zsc` novo.
+Copy the generated `RadialBridge.zsc` into the `ZStartup\ZPlugs64` folder inside your ZBrush 2024 installation (under `C:\Program Files\Maxon ZBrush 2024\`). Plugins in that folder load when ZBrush starts. If you change the `.txt`, load it again and copy the new `.zsc`.
 
-## ZBrush 2026 (ponte em Python)
+## ZBrush 2026 (Python bridge)
 
-No `config/menus.json`, use `"protocol": "python"`. No ZBrush, carregue `zbrush_bridge/radial_bridge.py` em `ZScript > Python Scripting > Load`. Os scripts de teste ficam em `zbrush_bridge/phase0/`. O `start_zbrush_with_bridge.bat` abre o 2026 já carregando a ponte. Nada disso roda no 2023 nem no 2024.
+In `config/menus.json`, use `"protocol": "python"`. In ZBrush, load `zbrush_bridge/radial_bridge.py` via `ZScript > Python Scripting > Load`. The test scripts are in `zbrush_bridge/phase0/`. `start_zbrush_with_bridge.bat` opens 2026 with the bridge already loaded. None of this works on 2023 or 2024.
 
-## Configuração (`config/menus.json`)
+## Configuration (`config/menus.json`)
 
-- `bridge.protocol`: `zscript` (2023/2024) ou `python` (2026).
-- `bridge.trigger_hotkey`: o atalho do botão Run.
-- `bridge.command_dir`: pasta do comando. Relativa à raiz do projeto. Na ponte ZScript, tem que bater com `rbDir`.
-- `menus[].hotkey`: formato do pynput, por exemplo `<alt>+q` ou `<ctrl>+<shift>+e`. Escolha combinações que o ZBrush não usa: o app não bloqueia a tecla, então o ZBrush também a recebe.
-- `selection.mode`: `hold` ou `toggle`.
-- `selection.hover_dwell_ms`: seleciona ao parar o mouse sobre o slot (0 = desligado).
-- `slots[].icon`: caminho de um PNG (opcional). Sem ícone, o slot mostra o texto.
-- `slots[].color`: cor do slot (opcional).
+- `bridge.protocol`: `zscript` (2023/2024) or `python` (2026).
+- `bridge.trigger_hotkey`: the Run button's hotkey.
+- `bridge.command_dir`: command folder. Relative to the project root. In the ZScript bridge it must match `rbDir`.
+- `menus[].hotkey`: pynput format, for example `<alt>+q` or `<ctrl>+<shift>+e`. Pick combinations ZBrush does not use: the app does not block the key, so ZBrush receives it too.
+- `selection.mode`: `hold` or `toggle`.
+- `selection.hover_dwell_ms`: selects when the mouse rests on a slot (0 = off).
+- `slots[].icon`: path to a PNG (optional). Without an icon, the slot shows its text.
+- `slots[].color`: slot color (optional).
 
-Depois de editar, use **Recarregar config** na bandeja.
+After editing, use **Reload config** in the tray.
 
-### Biblioteca de brushes
+### Brush library
 
 ```bat
-python -m radial.library "C:\pasta\dos\brushes" --slots
-python -m radial.library "C:\pasta\dos\brushes" --find clay --slots
+python -m radial.library "C:\path\to\brushes" --slots
+python -m radial.library "C:\path\to\brushes" --find clay --slots
 ```
 
-Grava `config/library.json` e imprime os brushes no formato de slot, prontos para colar no `menus.json`.
+Writes `config/library.json` and prints the brushes in slot format, ready to paste into `menus.json`.
 
-## Testes
+## Tests
 
 ```bat
 pip install pytest
 python -m pytest
 ```
 
-Os testes cobrem a lógica sem precisar do ZBrush nem de teclado: geometria do menu, validação do config, combinação de atalhos, o formato do comando das duas pontes, os colchetes do `RadialBridge.txt` e a varredura de brushes.
+The tests cover the logic without needing ZBrush or a keyboard: menu geometry, config validation, hotkey matching, the command format of both bridges, the bracket balance of `RadialBridge.txt` and the brush scan.
 
-## O que ainda não foi verificado
+## Verification status
 
-Este código foi escrito sem acesso a um ZBrush ou a uma tela Windows. O ZScript foi escrito a partir da referência oficial de comandos, mas nunca foi compilado. Confira:
+Confirmed working on ZBrush 2024: loading the bridge, the hotkey firing the Run button, and changing brushes from the menu (Alt+Q). Still worth checking on your setup:
 
-| Ponto | Como conferir | Onde ajustar |
+| Item | How to check | Where to adjust |
 | --- | --- | --- |
-| O `RadialBridge.txt` compila | `ZScript > Load` | `RadialBridge.txt` |
-| O nome do botão de carregar brush (`Brush:Load Brush`) | Botão **Check** | `rbLoadItem` no `RadialBridge.txt` |
-| Os item paths dos brushes (`Brush:ClayBuildup` etc.) | Botão **Test Press** | `config/menus.json` |
-| O ZBrush aceita Ctrl+Alt+Shift+J como atalho | Passo 3 | `trigger_hotkey` + atalho do Run |
-| O menu não rouba o foco do ZBrush | Usar o app | `radial/overlay.py` |
-| Os atalhos nativos do menu Tools | Usar o app | `config/menus.json` |
+| The Load Brush button name (`Brush:Load Brush`) | **Check** button | `rbLoadItem` in `RadialBridge.txt` |
+| Brush item paths (`Brush:ClayBuildup`, etc.) | **Test Press** button | `config/menus.json` |
+| Autoload of `RadialBridge.zsc` from `ZStartup\ZPlugs64` | Restart ZBrush | step 5 |
+| The Run hotkey persists after restarting ZBrush | `Hotkeys > Store` | step 3 |
+| Native hotkeys in the Tools menu | Use the app | `config/menus.json` |
 
-## Estrutura
+## Structure
 
 ```
-radial/                       app externo
-  app.py                      liga tudo + bandeja do sistema
-  overlay.py                  janela e desenho do menu
-  geometry.py                 ângulos, hit test, flick
-  hotkeys.py                  atalhos globais e envio de teclas
-  bridge_client.py            grava o comando e dispara a ponte
-  config.py                   leitura e validação do JSON
-  library.py                  varredura de brushes .ZBP
+radial/                       external app
+  app.py                      wires everything together + system tray
+  overlay.py                  menu window and drawing
+  geometry.py                 angles, hit test, flick
+  hotkeys.py                  global hotkeys and key sending
+  sendinput.py                physical key events via Win32 SendInput
+  winfocus.py                 brings ZBrush to the foreground
+  bridge_client.py            writes the command and fires the bridge
+  config.py                   JSON loading and validation
+  library.py                  .ZBP brush scan
 zbrush_bridge/
-  zscript/RadialBridge.txt    ponte para ZBrush 2023/2024
-  radial_bridge.py            ponte para ZBrush 2026
-  phase0/                     testes da API Python (só 2026)
-  data/                       onde o comando é gravado
-config/menus.json             menus de exemplo
-tests/                        testes automatizados
+  zscript/RadialBridge.txt    bridge for ZBrush 2023/2024
+  radial_bridge.py            bridge for ZBrush 2026
+  phase0/                     Python API tests (2026 only)
+  data/                       where the command is written
+config/menus.json            sample menus
+tests/                        automated tests
 ```
 
-## Próximos passos (do planejamento)
+## Next steps (from the plan)
 
-- Fase 3: tela para editar menus sem mexer no JSON.
-- Fase 4: popup de biblioteca com busca e arrastar para o slot.
-- Fase 5: child slots, tags, controles de aparência ao vivo, alphas, texturas e materiais.
+- Phase 3: a UI to edit menus without touching the JSON.
+- Phase 4: a library popup with search and drag-to-slot.
+- Phase 5: child slots, tags, live appearance controls, alphas, textures and materials.

@@ -1,13 +1,12 @@
-"""Atalhos globais (pynput) e envio de teclas.
+"""Global hotkeys (pynput) and key sending.
 
-O listener roda numa thread do pynput. Os sinais Qt emitidos daqui chegam na
-thread principal pela conexão em fila (AutoConnection), então a interface só é
-tocada na thread do Qt.
+The listener runs on a pynput thread. Qt signals emitted from here reach the
+main thread through a queued connection (AutoConnection), so the UI is only
+touched on the Qt thread.
 
-Comparação de teclas: no Windows, com Ctrl apertado o pynput entrega um
-caractere de controle (Ctrl+Q vira '\\x11'). Por isso cada tecla vira um
-conjunto de identidades (código virtual e caractere) e duas teclas "batem"
-quando os conjuntos se cruzam.
+Key comparison: on Windows, with Ctrl held, pynput delivers a control
+character (Ctrl+Q becomes '\\x11'). So each key becomes a set of identities
+(virtual-key code and character), and two keys "match" when the sets overlap.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ from PySide6.QtCore import QObject, Signal
 
 from . import sendinput
 
-LLKHF_INJECTED = 0x10  # flag do Windows para teclas geradas por software
+LLKHF_INJECTED = 0x10  # Windows flag for software-generated keys
 
 _MODIFIER_NAMES = {"ctrl", "alt", "shift", "cmd"}
 _SIDE_ALIASES = {
@@ -33,7 +32,7 @@ _SIDE_ALIASES = {
 
 
 def ident(key) -> frozenset:
-    """Identidades de uma tecla, para comparação tolerante."""
+    """Identities of a key, for tolerant comparison."""
     if isinstance(key, keyboard.Key):
         name = _SIDE_ALIASES.get(key.name, key.name)
         return frozenset({("key", name)})
@@ -46,7 +45,7 @@ def ident(key) -> frozenset:
         c = char.lower()
         ids.add(("char", c))
         if c.isascii() and c.isalnum():
-            # No Windows o código virtual de letras e números é o ASCII maiúsculo.
+            # On Windows the virtual-key code of letters and digits is the uppercase ASCII.
             ids.add(("vk", ord(c.upper())))
     return frozenset(ids)
 
@@ -61,7 +60,7 @@ def _is_modifier(i: frozenset) -> bool:
 
 
 class HotkeyService(QObject):
-    menu_pressed = Signal(int)   # índice do menu
+    menu_pressed = Signal(int)   # menu index
     menu_released = Signal(int)
     escape_pressed = Signal()
 
@@ -73,11 +72,11 @@ class HotkeyService(QObject):
         self._lock = threading.Lock()
         self._listener: keyboard.Listener | None = None
 
-    # --- ciclo de vida -------------------------------------------------
+    # --- lifecycle ---------------------------------------------------------
     def start(self) -> None:
         kwargs = {"on_press": self._on_press, "on_release": self._on_release}
         if sys.platform == "win32":
-            # Ignora teclas que o próprio app injeta (ex.: o gatilho da ponte).
+            # Ignore keys the app injects itself (e.g. the bridge trigger).
             kwargs["win32_event_filter"] = (
                 lambda msg, data: not (data.flags & LLKHF_INJECTED)
             )
@@ -90,7 +89,7 @@ class HotkeyService(QObject):
             self._listener.stop()
             self._listener = None
 
-    # --- estado --------------------------------------------------------
+    # --- state -------------------------------------------------------------
     def modifiers_down(self) -> bool:
         with self._lock:
             return any(_is_modifier(i) for i in self._pressed)
@@ -100,7 +99,7 @@ class HotkeyService(QObject):
         while self.modifiers_down() and time.monotonic() < end:
             time.sleep(0.01)
 
-    # --- lógica de combinação (testável sem teclado) --------------------
+    # --- combo logic (testable without a keyboard) -------------------------
     @staticmethod
     def _matches(item: frozenset, pressed: set[frozenset]) -> bool:
         return any(item & p for p in pressed)
@@ -114,12 +113,12 @@ class HotkeyService(QObject):
         )
 
     def handle_press(self, key_id: frozenset) -> int | None:
-        """Registra a tecla; devolve o índice do menu ativado, se houver."""
+        """Registers the key; returns the index of the menu it opens, if any."""
         with self._lock:
             self._pressed.add(key_id)
             pressed = set(self._pressed)
             if self._active is not None:
-                return None  # menu já aberto por atalho; ignora auto-repeat
+                return None  # a menu is already open from a hotkey; ignore auto-repeat
             for idx, combo in enumerate(self._combos):
                 if self._combo_hit(combo, key_id, pressed):
                     self._active = idx
@@ -127,7 +126,7 @@ class HotkeyService(QObject):
         return None
 
     def handle_release(self, key_id: frozenset) -> int | None:
-        """Solta a tecla; devolve o índice do menu liberado, se houver."""
+        """Releases the key; returns the index of the menu it releases, if any."""
         with self._lock:
             self._pressed = {p for p in self._pressed if not (p & key_id)}
             active = self._active
@@ -136,7 +135,7 @@ class HotkeyService(QObject):
                 return active
         return None
 
-    # --- callbacks do pynput (thread do listener) ----------------------
+    # --- pynput callbacks (listener thread) --------------------------------
     def _on_press(self, key) -> None:
         key_id = ident(key)
         if ("key", "esc") in key_id:
@@ -155,24 +154,24 @@ _controller: keyboard.Controller | None = None
 
 
 def send_keys(spec: str) -> None:
-    """Aperta uma ou mais combinações separadas por espaço.
+    """Presses one or more space-separated combos.
 
-    '<ctrl>+<shift>+<f12>'  -> uma combinação
-    'b s t'                 -> B, depois S, depois T (atalho de brush do ZBrush)
+    '<ctrl>+<shift>+<f12>'  -> one combo
+    'b s t'                 -> B, then S, then T (a ZBrush brush shortcut)
     """
     global _controller
-    # O ZBrush pode não registrar teclas apertadas por poucos milissegundos,
-    # então cada combinação fica pressionada por KEY_HOLD_S.
+    # ZBrush may miss keys held for only a few milliseconds, so each combo
+    # stays pressed for KEY_HOLD_S.
     for combo in spec.split():
-        # No Windows: tecla física via SendInput (o ZBrush ignora o caractere
-        # Unicode que o pynput manda para letras).
+        # On Windows: physical key via SendInput (ZBrush ignores the Unicode
+        # character pynput sends for letters).
         if sendinput.available():
             try:
                 sendinput.send_combo(combo, KEY_STEP_S, KEY_HOLD_S)
                 time.sleep(KEY_GAP_S)
                 continue
             except sendinput.UnsupportedKey as exc:
-                print(f"[radial] {exc} — usando o envio do pynput")
+                print(f"[radial] {exc} — falling back to pynput")
         if _controller is None:
             _controller = keyboard.Controller()
         keys = parse_combo(combo)
@@ -186,6 +185,6 @@ def send_keys(spec: str) -> None:
         time.sleep(KEY_GAP_S)
 
 
-KEY_STEP_S = 0.02   # entre uma tecla e outra da mesma combinação
-KEY_HOLD_S = 0.06   # tempo com a combinação inteira pressionada
-KEY_GAP_S = 0.06    # entre combinações
+KEY_STEP_S = 0.02   # between keys of the same combo
+KEY_HOLD_S = 0.06   # time the whole combo stays pressed
+KEY_GAP_S = 0.06    # between combos

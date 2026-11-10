@@ -38,10 +38,10 @@ def test_partial_override_keeps_other_defaults(tmp_path):
 
 
 @pytest.mark.parametrize("mutate, message", [
-    (lambda d: d.update(menus=[]), "pelo menos um menu"),
+    (lambda d: d.update(menus=[]), "at least one menu"),
     (lambda d: d["menus"][0].pop("hotkey"), "hotkey"),
     (lambda d: d["menus"][0]["slots"][0]["action"].update(type="nope"), "action.type"),
-    (lambda d: d["menus"][0]["slots"][0]["action"].pop("item"), "precisa de 'item'"),
+    (lambda d: d["menus"][0]["slots"][0]["action"].pop("item"), "requires 'item'"),
     (lambda d: d.update(selection={"mode": "x"}), "selection.mode"),
 ])
 def test_invalid_configs(tmp_path, mutate, message):
@@ -54,12 +54,12 @@ def test_invalid_configs(tmp_path, mutate, message):
 def test_duplicate_hotkeys(tmp_path):
     data = json.loads(json.dumps(MINIMAL))
     data["menus"].append(json.loads(json.dumps(data["menus"][0])))
-    with pytest.raises(c.ConfigError, match="repetido"):
+    with pytest.raises(c.ConfigError, match="duplicate"):
         c.load(_write(tmp_path, data))
 
 
 def test_bad_json(tmp_path):
     p = tmp_path / "menus.json"
     p.write_text("{", encoding="utf-8")
-    with pytest.raises(c.ConfigError, match="JSON inválido"):
+    with pytest.raises(c.ConfigError, match="invalid JSON"):
         c.load(p)

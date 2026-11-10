@@ -1,11 +1,11 @@
-"""Envio de teclas "físicas" no Windows via SendInput.
+"""Sending "physical" keys on Windows via SendInput.
 
-Por que existe: o pynput envia letras como caractere Unicode (VK_PACKET), não
-como a tecla J de verdade. Atalhos de aplicativos como o ZBrush olham a tecla
-física e ignoram isso. Aqui cada tecla vai com o código virtual (VK) e o scan
-code, como um teclado de verdade.
+Why it exists: pynput sends letters as a Unicode character (VK_PACKET), not as
+the real J key. Application hotkeys such as ZBrush's look at the physical key
+and ignore that. Here every key goes out with its virtual-key code (VK) and
+scan code, like a real keyboard.
 
-Formato aceito: o mesmo do pynput, ex. "<ctrl>+<alt>+<shift>+j", "x", "<f5>".
+Accepted format: the same as pynput, e.g. "<ctrl>+<alt>+<shift>+j", "x", "<f5>".
 """
 
 from __future__ import annotations
@@ -23,10 +23,10 @@ VK_NAMES = {
     "left": 0x25, "up": 0x26, "right": 0x27, "down": 0x28,
     **{f"f{i}": 0x6F + i for i in range(1, 25)},  # F1 = 0x70
 }
-# Teclas que no Windows precisam da flag "extended".
+# Keys that need the "extended" flag on Windows.
 EXTENDED = {0xA3, 0xA5, 0x2E, 0x2D, 0x24, 0x23, 0x21, 0x22, 0x25, 0x26, 0x27, 0x28, 0x5B}
 
-# Símbolos comuns no teclado US -> VK (VK_OEM_*).
+# Common US-keyboard symbols -> VK (VK_OEM_*).
 VK_SYMBOLS = {
     ";": 0xBA, "=": 0xBB, ",": 0xBC, "-": 0xBD, ".": 0xBE, "/": 0xBF,
     "`": 0xC0, "[": 0xDB, "\\": 0xDC, "]": 0xDD, "'": 0xDE,
@@ -43,24 +43,24 @@ def token_to_vk(token: str) -> int:
         name = token[1:-1].lower()
         if name in VK_NAMES:
             return VK_NAMES[name]
-        raise UnsupportedKey(f"tecla especial não suportada: {token}")
+        raise UnsupportedKey(f"unsupported special key: {token}")
     if len(token) == 1:
         c = token.lower()
         if c.isascii() and c.isalnum():
             return ord(c.upper())
         if c in VK_SYMBOLS:
             return VK_SYMBOLS[c]
-    raise UnsupportedKey(f"tecla não suportada: {token!r}")
+    raise UnsupportedKey(f"unsupported key: {token!r}")
 
 
 def parse_combo_vks(combo: str) -> list[int]:
     """'<ctrl>+<alt>+<shift>+j' -> [0x11, 0x12, 0x10, 0x4A]
 
-    O '+' sozinho como tecla (ex.: '<ctrl>++') não é suportado.
+    A bare '+' as a key (e.g. '<ctrl>++') is not supported.
     """
     parts = combo.split("+")
     if any(p == "" for p in parts):
-        raise UnsupportedKey(f"combinação inválida: {combo!r}")
+        raise UnsupportedKey(f"invalid combination: {combo!r}")
     return [token_to_vk(p) for p in parts]
 
 

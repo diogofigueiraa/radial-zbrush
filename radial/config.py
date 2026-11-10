@@ -1,6 +1,6 @@
-"""Leitura e validação do config/menus.json.
+"""Loading and validation of config/menus.json.
 
-O JSON é a fonte da verdade. Valores que faltarem recebem os padrões abaixo.
+The JSON file is the source of truth. Missing values get the defaults below.
 """
 
 from __future__ import annotations
@@ -15,16 +15,18 @@ DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "menus.json"
 
 VALID_ACTIONS = {"press", "brush_file", "keys"}
 VALID_MODES = {"hold", "toggle"}
+VALID_PROTOCOLS = {"zscript", "python"}
 
 DEFAULTS: dict[str, Any] = {
     "bridge": {
-        # "zscript" para ZBrush 2023/2024, "python" para ZBrush 2026.
+        # "zscript" for ZBrush 2023/2024, "python" for ZBrush 2026.
         "protocol": "zscript",
-        # Atalho que o app aperta para disparar o botão "Run" da ponte no ZBrush.
-        # Precisa ser o MESMO atalho atribuído ao botão ZPlugin > Radial Bridge > Run.
+        # Hotkey the app presses to fire the bridge's "Run" button in ZBrush.
+        # Must be the SAME hotkey assigned to ZPlugin > Radial Bridge > Run.
         "trigger_hotkey": "<ctrl>+<alt>+<shift>+j",
-        # Pasta onde o app escreve o comando e a ponte lê. Relativa à raiz do
-        # projeto. No ZScript, a mesma pasta está em rbDir (RadialBridge.txt).
+        # Folder where the app writes the command and the bridge reads it.
+        # Relative to the project root. In the ZScript bridge the same folder
+        # is set in rbDir (RadialBridge.txt).
         "command_dir": "zbrush_bridge/data",
     },
     "appearance": {
@@ -39,15 +41,15 @@ DEFAULTS: dict[str, Any] = {
         "font_size": 10,
     },
     "selection": {
-        # hold: segure o atalho, aponte e solte. toggle: aperte, aponte e clique.
+        # hold: hold the hotkey, point and release. toggle: press, point and click.
         "mode": "hold",
-        # Em hold, um toque rápido (menos que isso) deixa o menu aberto em modo clique.
+        # In hold mode, a quick tap (shorter than this) keeps the menu open in click mode.
         "tap_ms": 220,
-        # Seleciona ao parar o mouse sobre um slot por X ms. 0 = desligado.
+        # Selects when the cursor rests on a slot for X ms. 0 = off.
         "hover_dwell_ms": 0,
-        # Seleciona ao "arremessar" o mouse além do anel.
+        # Selects when the cursor is "flicked" past the ring.
         "flick": True,
-        # Distância do centro (em px) que conta como flick, além do raio + slot.
+        # Distance from the center (in px) that counts as a flick, beyond radius + slot.
         "flick_margin": 30,
     },
     "menus": [],
@@ -68,53 +70,50 @@ def _merge(defaults: dict, data: dict) -> dict:
     return out
 
 
-VALID_PROTOCOLS = {"zscript", "python"}
-
-
 def validate(cfg: dict) -> dict:
     protocol = cfg["bridge"]["protocol"]
     if protocol not in VALID_PROTOCOLS:
-        raise ConfigError(f"bridge.protocol inválido: {protocol!r} (use zscript ou python)")
+        raise ConfigError(f"invalid bridge.protocol: {protocol!r} (use zscript or python)")
 
     mode = cfg["selection"]["mode"]
     if mode not in VALID_MODES:
-        raise ConfigError(f"selection.mode inválido: {mode!r} (use hold ou toggle)")
+        raise ConfigError(f"invalid selection.mode: {mode!r} (use hold or toggle)")
 
     menus = cfg.get("menus")
     if not isinstance(menus, list) or not menus:
-        raise ConfigError("defina pelo menos um menu em 'menus'")
+        raise ConfigError("define at least one menu in 'menus'")
 
     seen_hotkeys: set[str] = set()
     for mi, menu in enumerate(menus):
         where = f"menus[{mi}]"
         if not menu.get("name"):
-            raise ConfigError(f"{where}: falta 'name'")
+            raise ConfigError(f"{where}: missing 'name'")
         hotkey = menu.get("hotkey")
         if not hotkey:
-            raise ConfigError(f"{where}: falta 'hotkey'")
+            raise ConfigError(f"{where}: missing 'hotkey'")
         if hotkey in seen_hotkeys:
-            raise ConfigError(f"{where}: atalho repetido {hotkey!r}")
+            raise ConfigError(f"{where}: duplicate hotkey {hotkey!r}")
         seen_hotkeys.add(hotkey)
 
         slots = menu.get("slots")
         if not isinstance(slots, list) or not slots:
-            raise ConfigError(f"{where}: precisa de pelo menos um slot")
+            raise ConfigError(f"{where}: needs at least one slot")
         if len(slots) > 16:
-            raise ConfigError(f"{where}: máximo de 16 slots")
+            raise ConfigError(f"{where}: at most 16 slots")
         for si, slot in enumerate(slots):
             swhere = f"{where}.slots[{si}]"
             if not slot.get("label"):
-                raise ConfigError(f"{swhere}: falta 'label'")
+                raise ConfigError(f"{swhere}: missing 'label'")
             action = slot.get("action") or {}
             atype = action.get("type")
             if atype not in VALID_ACTIONS:
                 raise ConfigError(
-                    f"{swhere}: action.type inválido {atype!r} "
+                    f"{swhere}: invalid action.type {atype!r} "
                     f"(use {', '.join(sorted(VALID_ACTIONS))})"
                 )
             required = {"press": "item", "brush_file": "path", "keys": "keys"}[atype]
             if not action.get(required):
-                raise ConfigError(f"{swhere}: action '{atype}' precisa de '{required}'")
+                raise ConfigError(f"{swhere}: action '{atype}' requires '{required}'")
     return cfg
 
 
@@ -123,9 +122,9 @@ def load(path: str | Path | None = None) -> dict:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise ConfigError(f"config não encontrado: {path}") from exc
+        raise ConfigError(f"config not found: {path}") from exc
     except json.JSONDecodeError as exc:
-        raise ConfigError(f"JSON inválido em {path}: {exc}") from exc
+        raise ConfigError(f"invalid JSON in {path}: {exc}") from exc
     return validate(_merge(DEFAULTS, data))
 
 

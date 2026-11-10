@@ -1,9 +1,9 @@
-"""A janela do menu radial.
+"""The radial menu window.
 
-- Sem borda, transparente, sempre por cima e SEM pegar foco: o ZBrush continua
-  ativo e recebe as teclas que o app envia depois.
-- O hover é calculado por polling do cursor (60 Hz), então funciona mesmo
-  quando o mouse sai da janela (necessário para o flick).
+- Frameless, transparent, always on top and does NOT take focus: ZBrush stays
+  active and receives the keys the app sends afterwards.
+- Hover is computed by polling the cursor (60 Hz), so it keeps working when
+  the mouse leaves the window (needed for flick).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ PADDING = 24
 
 
 class RadialOverlay(QWidget):
-    selected = Signal(dict)   # o slot escolhido
+    selected = Signal(dict)   # the chosen slot
     closed = Signal()
 
     def __init__(self, appearance: dict, selection: dict):
@@ -52,7 +52,7 @@ class RadialOverlay(QWidget):
         self._timer.setInterval(16)
         self._timer.timeout.connect(self._tick)
 
-    # --- abrir / fechar ------------------------------------------------
+    # --- open / close ------------------------------------------------------
     @property
     def opened_ms(self) -> float:
         return (time.monotonic() - self._opened_at) * 1000.0
@@ -79,7 +79,7 @@ class RadialOverlay(QWidget):
         self.closed.emit()
 
     def confirm_hovered(self) -> bool:
-        """Seleciona o slot sob o cursor. Devolve False se não havia nenhum."""
+        """Selects the slot under the cursor. Returns False if there was none."""
         if self.menu is None or self.hovered is None:
             return False
         slot = self.menu["slots"][self.hovered]
@@ -87,7 +87,7 @@ class RadialOverlay(QWidget):
         self.selected.emit(slot)
         return True
 
-    # --- entrada ----------------------------------------------------------
+    # --- input -------------------------------------------------------------
     def _rel_cursor(self) -> tuple[float, float]:
         p = QCursor.pos()
         return (p.x() - self._center_global.x(), p.y() - self._center_global.y())
@@ -100,7 +100,7 @@ class RadialOverlay(QWidget):
         r = self.app_cfg["radius"]
         s = self.app_cfg["slot_size"]
 
-        # Flick: passou do anel -> escolhe o slot naquela direção.
+        # Flick: the cursor passed the ring -> pick the slot in that direction.
         flick_radius = r + s / 2 + self.sel_cfg["flick_margin"]
         if self.sel_cfg["flick"] and geometry.is_flick(dx, dy, flick_radius):
             self.hovered = geometry.angle_to_slot(dx, dy, n)
@@ -118,14 +118,14 @@ class RadialOverlay(QWidget):
             if (time.monotonic() - self._hover_since) * 1000.0 >= dwell:
                 self.confirm_hovered()
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802 (API do Qt)
+    def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt API)
         if event.button() == Qt.LeftButton:
             if not self.confirm_hovered():
-                self.close_menu()  # clique no centro fecha
+                self.close_menu()  # clicking the center closes the menu
         elif event.button() == Qt.RightButton:
             self.close_menu()
 
-    # --- desenho ----------------------------------------------------------
+    # --- drawing -----------------------------------------------------------
     def _load_icons(self, menu: dict) -> None:
         for slot in menu["slots"]:
             icon = slot.get("icon")
@@ -151,14 +151,14 @@ class RadialOverlay(QWidget):
         accent = QColor(cfg["accent_color"])
         text_col = QColor(cfg["text_color"])
 
-        # Anel de fundo
+        # Background ring
         pen = QPen(ring, s + 14)
         pen.setCapStyle(Qt.RoundCap)
         p.setPen(pen)
         p.setBrush(Qt.NoBrush)
         p.drawEllipse(c, r, r)
 
-        # Centro com o nome do menu
+        # Center with the menu name
         p.setPen(Qt.NoPen)
         p.setBrush(ring)
         p.drawEllipse(c, cfg["inner_radius"], cfg["inner_radius"])
@@ -198,7 +198,7 @@ class RadialOverlay(QWidget):
 
 
 def screen_center_under_cursor() -> QPoint:
-    """Posição do cursor (o menu abre centrado nele)."""
+    """Cursor position (the menu opens centered on it)."""
     pos = QCursor.pos()
     screen = QGuiApplication.screenAt(pos)
     return pos if screen else QPoint(0, 0)

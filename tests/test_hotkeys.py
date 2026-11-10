@@ -1,7 +1,7 @@
-"""Testa a lógica de combinação de teclas do HotkeyService.
+"""Tests the key-combination logic of HotkeyService.
 
-Se pynput/PySide6 não estiverem instalados, usa substitutos mínimos só para
-importar o módulo — o que está sendo testado é a lógica, não o teclado.
+If pynput/PySide6 are not installed, minimal stand-ins are used just to
+import the module — what is being tested is the logic, not the keyboard.
 """
 
 import enum
@@ -74,7 +74,7 @@ def test_alt_q_opens_and_releases():
     assert svc.handle_press(hk.ident(Key.alt_l)) is None
     assert svc.handle_press(hk.ident(KeyCode(vk=0x51, char="q"))) == 0
     assert svc.modifiers_down()
-    # auto-repeat não reabre
+    # auto-repeat does not reopen
     assert svc.handle_press(hk.ident(KeyCode(vk=0x51, char="q"))) is None
     assert svc.handle_release(hk.ident(KeyCode(vk=0x51, char="q"))) == 0
     assert svc.handle_release(hk.ident(Key.alt_l)) is None
@@ -82,7 +82,7 @@ def test_alt_q_opens_and_releases():
 
 
 def test_ctrl_combo_with_control_char():
-    # No Windows, Ctrl+Q chega como char '\x11' — tem que bater pelo código virtual.
+    # On Windows, Ctrl+Q arrives as char '\x11' — it must match by virtual-key code.
     svc = make("<ctrl>+q")
     svc.handle_press(hk.ident(Key.ctrl_l))
     assert svc.handle_press(hk.ident(KeyCode(vk=0x51, char="\x11"))) == 0

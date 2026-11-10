@@ -8,7 +8,7 @@ def test_scan_and_search(tmp_path):
     (tmp_path / "Hard").mkdir()
     (tmp_path / "Hard" / "TrimDynamic.zbp").write_bytes(b"x")
 
-    found = lib.scan([tmp_path, tmp_path])  # pasta repetida não duplica
+    found = lib.scan([tmp_path, tmp_path])  # a repeated folder does not duplicate
     assert [b["name"] for b in found] == ["ClayBuildup", "TrimDynamic"]
     assert [b["name"] for b in lib.search(found, "trim")] == ["TrimDynamic"]
     assert [b["name"] for b in lib.search(found, "clay build")] == ["ClayBuildup"]
@@ -18,4 +18,4 @@ def test_scan_and_search(tmp_path):
 
 
 def test_missing_folder_is_ignored(tmp_path):
-    assert lib.scan([tmp_path / "nao-existe"]) == []
+    assert lib.scan([tmp_path / "does-not-exist"]) == []

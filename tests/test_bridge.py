@@ -1,7 +1,7 @@
-"""Testa o protocolo de ponta a ponta sem ZBrush.
+"""Tests the protocol end to end without ZBrush.
 
-- ZScript (2023/2024): confere a linha gravada em command.txt.
-- Python (2026): o cliente grava, a ponte (com uma API falsa) lê e executa.
+- ZScript (2023/2024): checks the line written to command.txt.
+- Python (2026): the client writes, the bridge (with a fake API) reads and runs it.
 """
 
 import json
@@ -19,7 +19,7 @@ ZSCRIPT_FILE = Path(__file__).resolve().parent.parent / "zbrush_bridge" / "zscri
 # --- ZScript ---------------------------------------------------------------
 
 def _zscript_parse(line: str) -> tuple[str, str]:
-    """Mesmo corte que o rbDo faz: tudo antes do primeiro | e tudo depois."""
+    """Same split rbDo does: everything before the first | and everything after."""
     sep = line.find("|")
     assert sep >= 1
     return line[:sep], line[sep + 1:]
@@ -42,8 +42,8 @@ def test_zscript_load_uses_forward_slashes(tmp_path):
 
 @pytest.mark.parametrize("action, message", [
     ({"type": "press", "item": "Brush:Ação"}, "ASCII"),
-    ({"type": "brush_file", "path": "C:/" + "a" * 300}, "no máximo"),
-    ({"type": "keys", "keys": "x"}, "não passa pela ponte"),
+    ({"type": "brush_file", "path": "C:/" + "a" * 300}, "at most"),
+    ({"type": "keys", "keys": "x"}, "does not go through the bridge"),
 ])
 def test_zscript_rejects(tmp_path, action, message):
     with pytest.raises(bc.BridgeCommandError, match=message):
@@ -57,7 +57,7 @@ def test_zscript_one_action_only(tmp_path):
 
 
 def test_zscript_file_is_balanced():
-    """Colchetes balanceados no RadialBridge.txt (ignorando comentários e strings)."""
+    """Balanced brackets in RadialBridge.txt (ignoring comments and strings)."""
     depth = 0
     for n, raw in enumerate(ZSCRIPT_FILE.read_text(encoding="utf-8").splitlines(), 1):
         in_str = False
@@ -72,8 +72,8 @@ def test_zscript_file_is_balanced():
                 depth += 1
             elif ch == "]":
                 depth -= 1
-                assert depth >= 0, f"']' sobrando na linha {n}"
-        assert not in_str, f"aspas abertas na linha {n}"
+                assert depth >= 0, f"stray ']' on line {n}"
+        assert not in_str, f"unclosed quote on line {n}"
     assert depth == 0
 
 
@@ -118,7 +118,7 @@ def test_python_press_roundtrip(paths):
     api = FakeZBrush({"Brush:Move"})
     result = rb.run_pending(api, str(cmd), str(res))
     assert result["ok"] and api.pressed == ["Brush:Move"]
-    assert not cmd.exists(), "o comando deve ser apagado depois de lido"
+    assert not cmd.exists(), "the command must be deleted after being read"
     assert json.loads(res.read_text(encoding="utf-8"))["ok"]
 
 
@@ -139,7 +139,7 @@ def test_python_missing_item_is_reported(paths):
     _write_py(d, [{"type": "press", "item": "Brush:Nope"}])
     result = rb.run_pending(FakeZBrush(set()), str(cmd), str(res))
     assert not result["ok"]
-    assert "não existe" in result["errors"][0]
+    assert "does not exist" in result["errors"][0]
 
 
 def test_python_no_pending_command(paths):
@@ -193,20 +193,20 @@ def test_runner_focuses_and_reports(tmp_path, capsys):
     )
     runner._run({"type": "press", "item": "Brush:Move"})
     assert calls == [("focus",), ("keys", "<ctrl>+<alt>+<shift>+j")]
-    # Ninguém apagou o command.txt: o app avisa que o atalho não chegou.
-    assert "não leu o comando" in capsys.readouterr().out
+    # Nobody deleted command.txt: the app warns that the hotkey did not arrive.
+    assert "did not read the command" in capsys.readouterr().out
 
 
 def test_runner_reports_success_when_bridge_consumes(tmp_path, capsys):
     target = tmp_path / "command.txt"
     runner = bc.ActionRunner(
         {"command_dir": str(tmp_path), "trigger_hotkey": "<ctrl>+<alt>+<shift>+j"},
-        send_keys=lambda k: target.unlink(missing_ok=True),  # "ponte" consome
+        send_keys=lambda k: target.unlink(missing_ok=True),  # the "bridge" consumes it
         wait_modifiers_released=lambda t: None,
         confirm_timeout=0.5,
     )
     runner._run({"type": "press", "item": "Brush:Move"})
-    assert "ponte executou" in capsys.readouterr().out
+    assert "bridge ran the command" in capsys.readouterr().out
 
 
 def test_zbrush_title_detection():

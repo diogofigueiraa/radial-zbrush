@@ -1,8 +1,8 @@
-"""Ponto de entrada do app: liga atalhos, menu radial e ponte.
+"""App entry point: wires up the hotkeys, the radial menu and the bridge.
 
-Uso:
-    python -m radial                 # usa config/menus.json
-    python -m radial caminho.json    # outro arquivo de configuração
+Usage:
+    python -m radial                 # uses config/menus.json
+    python -m radial path.json       # another config file
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class RadialApp(QObject):
         self.tray: QSystemTrayIcon | None = None
         self._open_index: int | None = None
 
-    # --- carregar / recarregar ------------------------------------------
+    # --- load / reload ---------------------------------------------------
     def load(self) -> None:
         self.cfg = config_mod.load(self.config_path)
 
@@ -74,17 +74,17 @@ class RadialApp(QObject):
             ensure_focus=ensure_zbrush_foreground,
         )
         names = ", ".join(f'{m["name"]} ({m["hotkey"]})' for m in self.cfg["menus"])
-        print(f"[radial] menus carregados: {names}")
+        print(f"[radial] menus loaded: {names}")
 
     def reload(self) -> None:
         try:
             self.load()
             if self.tray:
-                self.tray.showMessage("Radial", "Configuração recarregada.")
+                self.tray.showMessage("Radial", "Config reloaded.")
         except config_mod.ConfigError as exc:
-            QMessageBox.warning(None, "Radial — erro no config", str(exc))
+            QMessageBox.warning(None, "Radial — config error", str(exc))
 
-    # --- eventos -------------------------------------------------------
+    # --- events ------------------------------------------------------------
     def _on_menu_pressed(self, idx: int) -> None:
         mode = self.cfg["selection"]["mode"]
         if self.overlay.isVisible():
@@ -99,7 +99,7 @@ class RadialApp(QObject):
             return
         if self.overlay.confirm_hovered():
             return
-        # Toque rápido sem apontar: deixa aberto e espera um clique.
+        # Quick tap without pointing: keep the menu open and wait for a click.
         if self.overlay.opened_ms >= self.cfg["selection"]["tap_ms"]:
             self.overlay.close_menu()
 
@@ -111,24 +111,24 @@ class RadialApp(QObject):
         self._open_index = None
 
     def _on_selected(self, slot: dict) -> None:
-        print(f"[radial] escolhido: {slot['label']} -> {slot['action']}")
+        print(f"[radial] selected: {slot['label']} -> {slot['action']}")
         self.runner.run(slot["action"])
 
-    # --- bandeja do sistema -------------------------------------------
+    # --- system tray -------------------------------------------------------
     def setup_tray(self) -> None:
         self.tray = QSystemTrayIcon(_tray_icon(self.cfg["appearance"]["accent_color"]))
-        self.tray.setToolTip("Radial menu para ZBrush")
+        self.tray.setToolTip("Radial menu for ZBrush")
         menu = QMenu()
-        act_reload = QAction("Recarregar config", menu)
+        act_reload = QAction("Reload config", menu)
         act_reload.triggered.connect(self.reload)
-        act_quit = QAction("Sair", menu)
+        act_quit = QAction("Quit", menu)
         act_quit.triggered.connect(self.quit)
         menu.addAction(act_reload)
         menu.addSeparator()
         menu.addAction(act_quit)
         self.tray.setContextMenu(menu)
         self.tray.show()
-        self._tray_menu = menu  # mantém referência viva
+        self._tray_menu = menu  # keep a live reference
 
     def quit(self) -> None:
         if self.hotkeys:
@@ -147,8 +147,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         app.load()
     except config_mod.ConfigError as exc:
-        QMessageBox.critical(None, "Radial — erro no config", str(exc))
+        QMessageBox.critical(None, "Radial — config error", str(exc))
         return 1
     app.setup_tray()
-    print("[radial] rodando. Use o ícone na bandeja para recarregar ou sair.")
+    print("[radial] running. Use the tray icon to reload or quit.")
     return qt_app.exec()

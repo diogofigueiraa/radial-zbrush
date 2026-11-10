@@ -1,18 +1,19 @@
-"""Lado de fora da ponte: grava o comando em disco e "acorda" o ZBrush.
+"""Outside half of the bridge: writes the command to disk and "wakes" ZBrush.
 
-Duas pontes possíveis (bridge.protocol no config):
+Two possible bridges (bridge.protocol in the config):
 
 - "zscript" (ZBrush 2023/2024): zbrush_bridge/zscript/RadialBridge.txt
-    <command_dir>/command.txt com UMA linha:  press|Brush:Move  ou  load|C:/x/Clay.ZBP
+    <command_dir>/command.txt with ONE line:  press|Brush:Move  or  load|C:/x/Clay.ZBP
 
 - "python" (ZBrush 2026): zbrush_bridge/radial_bridge.py
     <command_dir>/command.json  {"id": ..., "created": ..., "actions": [...]}
 
-Depois de gravar, o app aperta o `trigger_hotkey`, atribuído no ZBrush ao botão
-ZPlugin > Radial Bridge > Run. O botão lê o arquivo, executa e apaga.
+After writing, the app presses `trigger_hotkey`, which in ZBrush is assigned to
+the ZPlugin > Radial Bridge > Run button. The button reads the file, runs it and
+deletes it.
 
-Por que assim: nem o ZScript nem a API Python do ZBrush têm um jeito de
-"escutar" em segundo plano. Código no ZBrush roda a partir de um botão.
+Why this design: neither ZScript nor ZBrush's Python API can "listen" in the
+background. Code in ZBrush runs from a button.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ RESULT_FILE = "last_result.json"
 
 BRIDGE_ACTIONS = {"press", "brush_file"}
 ZSCRIPT_KINDS = {"press": ("press", "item"), "brush_file": ("load", "path")}
-ZSCRIPT_MAX_LINE = 250  # MemReadString lê no máximo 255 caracteres
+ZSCRIPT_MAX_LINE = 250  # MemReadString reads at most 255 characters
 
 
 class BridgeCommandError(ValueError):
@@ -41,7 +42,7 @@ class BridgeCommandError(ValueError):
 
 
 def command_dir(raw: str) -> Path:
-    """Expande ~ e variáveis; caminho relativo é relativo à raiz do projeto."""
+    """Expands ~ and variables; a relative path is relative to the project root."""
     path = Path(os.path.expandvars(os.path.expanduser(raw)))
     return path if path.is_absolute() else PROJECT_ROOT / path
 
@@ -54,34 +55,34 @@ def _atomic_write(target: Path, text: str) -> None:
 
 
 def zscript_line(action: dict) -> str:
-    """Converte uma ação na linha que o RadialBridge.txt entende."""
+    """Turns an action into the line RadialBridge.txt understands."""
     atype = action.get("type")
     if atype not in ZSCRIPT_KINDS:
-        raise BridgeCommandError(f"ação {atype!r} não passa pela ponte")
+        raise BridgeCommandError(f"action {atype!r} does not go through the bridge")
     kind, field = ZSCRIPT_KINDS[atype]
     arg = str(action[field])
     if atype == "brush_file":
         arg = arg.replace("\\", "/")
     line = f"{kind}|{arg}"
     if "\n" in line or "\r" in line:
-        raise BridgeCommandError("o comando não pode ter quebra de linha")
+        raise BridgeCommandError("the command cannot contain line breaks")
     if len(line) > ZSCRIPT_MAX_LINE:
         raise BridgeCommandError(
-            f"comando com {len(line)} caracteres; o ZScript lê no máximo {ZSCRIPT_MAX_LINE}"
+            f"command is {len(line)} characters long; ZScript reads at most {ZSCRIPT_MAX_LINE}"
         )
     if not line.isascii():
         raise BridgeCommandError(
-            "use só caracteres ASCII (sem acentos) no caminho ou item path: "
-            "o ZScript pode não ler o texto corretamente"
+            "use only ASCII characters (no accents) in the path or item path: "
+            "ZScript may not read the text correctly"
         )
     return line
 
 
 def write_command(directory: Path, actions: list[dict], protocol: str = "zscript") -> Path:
-    """Grava o comando de forma atômica e devolve o caminho do arquivo."""
+    """Writes the command atomically and returns the file path."""
     if protocol == "zscript":
         if len(actions) != 1:
-            raise BridgeCommandError("a ponte ZScript executa uma ação por vez")
+            raise BridgeCommandError("the ZScript bridge runs one action at a time")
         target = directory / TEXT_COMMAND_FILE
         _atomic_write(target, zscript_line(actions[0]))
         return target
@@ -90,7 +91,7 @@ def write_command(directory: Path, actions: list[dict], protocol: str = "zscript
         target = directory / JSON_COMMAND_FILE
         _atomic_write(target, json.dumps(payload, ensure_ascii=False))
         return target
-    raise BridgeCommandError(f"protocolo desconhecido: {protocol!r}")
+    raise BridgeCommandError(f"unknown protocol: {protocol!r}")
 
 
 def read_result(directory: Path) -> dict | None:
@@ -101,10 +102,10 @@ def read_result(directory: Path) -> dict | None:
 
 
 class ActionRunner:
-    """Executa a ação de um slot.
+    """Runs a slot's action.
 
-    - press / brush_file: passam pela ponte no ZBrush.
-    - keys: o app só aperta as teclas (atalhos nativos do ZBrush).
+    - press / brush_file: go through the bridge in ZBrush.
+    - keys: the app only presses keys (native ZBrush shortcuts).
     """
 
     def __init__(
@@ -124,41 +125,42 @@ class ActionRunner:
         self.confirm_timeout = confirm_timeout
 
     def run(self, action: dict) -> None:
-        # Em thread separada para não travar a interface do menu.
+        # On a separate thread so the menu UI doesn't freeze.
         threading.Thread(target=self._run, args=(action,), daemon=True).start()
 
     def _run(self, action: dict) -> None:
-        # Se o usuário ainda segura Alt/Ctrl/Shift do atalho do menu, o ZBrush
-        # receberia outra combinação. Espera soltar (até 0,6 s).
+        # If the user is still holding Alt/Ctrl/Shift from the menu hotkey, ZBrush
+        # would receive a different combo. Wait for release (up to 0.6 s).
         self._wait_mods(0.6)
         atype = action.get("type")
         try:
             if atype == "keys":
                 self._ensure_focus()
                 self._send_keys(action["keys"])
-                print(f"[radial] teclas enviadas: {action['keys']}")
+                print(f"[radial] keys sent: {action['keys']}")
             elif atype in BRIDGE_ACTIONS:
                 path = write_command(self.directory, [action], self.protocol)
                 self._ensure_focus()
                 self._send_keys(self.trigger)
                 self._report_bridge(path)
             else:
-                print(f"[radial] ação desconhecida: {action!r}")
+                print(f"[radial] unknown action: {action!r}")
         except BridgeCommandError as exc:
-            print(f"[radial] comando recusado: {exc}")
+            print(f"[radial] command rejected: {exc}")
 
     def _ensure_focus(self) -> None:
         if self._focus is not None:
             self._focus()
 
     def _report_bridge(self, path: Path) -> None:
-        """A ponte apaga o arquivo ao ler. Se continuar lá, o atalho não chegou."""
+        """The bridge deletes the file when it reads it. If it is still there,
+        the hotkey never arrived."""
         deadline = time.monotonic() + self.confirm_timeout
         while time.monotonic() < deadline:
             if not path.exists():
-                print("[radial] ponte executou o comando")
+                print("[radial] bridge ran the command")
                 return
             time.sleep(0.05)
-        print("[radial] AVISO: o ZBrush não leu o comando. O atalho "
-              f"{self.trigger} não chegou ao botão Run. Confira se o ZBrush "
-              "está em foco e se o atalho do Run está atribuído.")
+        print("[radial] WARNING: ZBrush did not read the command. The hotkey "
+              f"{self.trigger} did not reach the Run button. Check that ZBrush "
+              "is focused and that the Run hotkey is assigned.")

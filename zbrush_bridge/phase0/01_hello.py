@@ -1,14 +1,14 @@
-"""Fase 0, teste 1 — o Python do ZBrush funciona?
+"""Phase 0, test 1 — does ZBrush's Python work?
 
-ZBrush > ZScript > Python Scripting > Load > este arquivo.
-Ative ZScript > Script Window Mode > Python Output para ver o print no console.
+ZBrush > ZScript > Python Scripting > Load > this file.
+Enable ZScript > Script Window Mode > Python Output to see the print in the console.
 """
 
 import sys
 
 from zbrush import commands as zbc
 
-print("[fase0] Olá do Python dentro do ZBrush")
-print("[fase0] Python", sys.version)
-print("[fase0] system_info:", zbc.system_info())
-zbc.message_ok("O Python está rodando dentro do ZBrush.", "Fase 0 — teste 1")
+print("[phase0] Hello from Python inside ZBrush")
+print("[phase0] Python", sys.version)
+print("[phase0] system_info:", zbc.system_info())
+zbc.message_ok("Python is running inside ZBrush.", "Phase 0 — test 1")

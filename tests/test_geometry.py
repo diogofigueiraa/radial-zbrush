@@ -12,7 +12,7 @@ def test_slot_zero_is_on_top():
 
 
 def test_slots_go_clockwise():
-    # Com y para baixo, o slot 2 de 8 (90° depois do topo) fica à direita.
+    # With y pointing down, slot 2 of 8 (90° after the top) is on the right.
     x, y = g.slot_position(2, 8, 100)
     assert x == pytest.approx(100)
     assert y == pytest.approx(0, abs=1e-9)

@@ -1,5 +1,5 @@
 import sys
 from pathlib import Path
 
-# Permite "import radial" e "import zbrush_bridge" a partir da raiz do projeto.
+# Allows "import radial" and "import zbrush_bridge" from the project root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

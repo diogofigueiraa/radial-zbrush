@@ -1,9 +1,9 @@
-"""Garante que o ZBrush esteja em foco antes de o app enviar teclas.
+"""Makes sure ZBrush is focused before the app sends keys.
 
-Teclas enviadas pelo app vão para a janela ativa. Se a janela ativa não for o
-ZBrush (a janela do run.bat, o navegador...), o atalho da ponte se perde.
+Keys sent by the app go to the active window. If the active window is not
+ZBrush (the run.bat window, the browser...), the bridge hotkey is lost.
 
-Só funciona no Windows (usa a API Win32 via ctypes, sem dependências extras).
+Windows only (uses the Win32 API through ctypes, no extra dependencies).
 """
 
 from __future__ import annotations
@@ -40,8 +40,8 @@ def _title(user32, ctypes, hwnd) -> str:
 
 def is_zbrush_title(title: str) -> bool:
     t = title.lower()
-    # Exclui janelas que só citam o ZBrush no título (ex.: esta pasta no Explorer,
-    # o cmd do run.bat em ...\radial-zbrush).
+    # Excludes windows that merely mention ZBrush in the title (e.g. this folder
+    # in Explorer, the run.bat console at ...\radial-zbrush).
     return TITLE_HINT in t and "radial-zbrush" not in t and "cmd.exe" not in t
 
 
@@ -53,7 +53,7 @@ def foreground_title() -> str:
 
 
 def find_zbrush_window():
-    """Primeira janela visível cujo título parece ser do ZBrush."""
+    """First visible window whose title looks like ZBrush's."""
     ctypes, wintypes, user32 = _win32()
     found = []
 
@@ -69,7 +69,7 @@ def find_zbrush_window():
 
 
 def ensure_zbrush_foreground() -> bool:
-    """True se o ZBrush está (ou ficou) em foco. Fora do Windows, sempre True."""
+    """True if ZBrush is (or became) focused. Always True outside Windows."""
     if sys.platform != "win32":
         return True
     ctypes, _, user32 = _win32()
@@ -77,7 +77,7 @@ def ensure_zbrush_foreground() -> bool:
         return True
     hwnd = find_zbrush_window()
     if not hwnd:
-        print("[radial] AVISO: não encontrei a janela do ZBrush aberta.")
+        print("[radial] WARNING: could not find an open ZBrush window.")
         return False
     if user32.IsIconic(hwnd):
         user32.ShowWindow(hwnd, 9)  # SW_RESTORE
@@ -85,6 +85,6 @@ def ensure_zbrush_foreground() -> bool:
     time.sleep(0.08)
     ok = is_zbrush_title(_title(user32, ctypes, user32.GetForegroundWindow()))
     if not ok:
-        print("[radial] AVISO: o ZBrush não está em foco e o Windows não deixou "
-              "trazê-lo para a frente. Clique no ZBrush e tente de novo.")
+        print("[radial] WARNING: ZBrush is not focused and Windows would not "
+              "bring it to the front. Click on ZBrush and try again.")
     return ok

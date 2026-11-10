@@ -1,14 +1,15 @@
-"""Fase 0, teste 4 (EXPERIMENTO) — uma thread consegue rodar dentro do ZBrush?
+"""Phase 0, test 4 (EXPERIMENT) — can a thread run inside ZBrush?
 
-A ponte atual NÃO depende disso (usa um botão disparado por atalho). Este
-teste existe só para saber se uma ponte "sempre escutando" seria possível.
+The current bridge does NOT depend on this (it uses a button fired by a
+hotkey). This test only exists to find out whether an "always listening"
+bridge would be possible.
 
-Salve sua cena antes: a documentação não fala de threads, e a Maxon avisa que
-iniciar outro interpretador Python com subprocess pode derrubar o ZBrush.
+Save your scene first: the documentation says nothing about threads, and Maxon
+warns that starting another Python interpreter with subprocess can crash ZBrush.
 
-O que observar por ~5 s:
-  1. As linhas "[thread] tick" aparecem no console?
-  2. A interface continua respondendo enquanto isso?
+What to watch for ~5 s:
+  1. Do the "[thread] tick" lines show up in the console?
+  2. Does the interface keep responding meanwhile?
 """
 
 import threading
@@ -19,8 +20,8 @@ def worker():
     for i in range(5):
         print(f"[thread] tick {i + 1}/5")
         time.sleep(1)
-    print("[thread] fim")
+    print("[thread] done")
 
 
 threading.Thread(target=worker, daemon=True).start()
-print("[fase0] thread iniciada — mexa na interface do ZBrush e observe o console")
+print("[phase0] thread started — poke around the ZBrush interface and watch the console")

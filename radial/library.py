@@ -1,10 +1,10 @@
-"""Varredura de pastas atrás de brushes (.ZBP) — base da Fase 4.
+"""Folder scan for brushes (.ZBP) — the basis of Phase 4.
 
-Uso:
-    python -m radial.library "C:\\caminho\\dos\\brushes" "D:\\meus brushes"
-    python -m radial.library <pastas...> --slots   # imprime slots prontos para o JSON
+Usage:
+    python -m radial.library "C:\\path\\to\\brushes" "D:\\my brushes"
+    python -m radial.library <folders...> --slots   # prints slots ready for the JSON
 
-Gera config/library.json com nome e caminho de cada brush encontrado.
+Writes config/library.json with the name and path of every brush found.
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ LIBRARY_PATH = PROJECT_ROOT / "config" / "library.json"
 
 
 def scan(folders: list[str | Path]) -> list[dict]:
-    """Lista os brushes nas pastas (recursivo), sem duplicar caminhos."""
+    """Lists the brushes in the folders (recursive), without duplicate paths."""
     found: dict[str, dict] = {}
     for folder in folders:
         root = Path(folder).expanduser()
         if not root.is_dir():
-            print(f"[library] pasta não encontrada, ignorando: {root}")
+            print(f"[library] folder not found, skipping: {root}")
             continue
         for path in root.rglob("*"):
             if path.is_file() and path.suffix.lower() in BRUSH_EXTENSIONS:
@@ -40,7 +40,7 @@ def scan(folders: list[str | Path]) -> list[dict]:
 
 
 def search(library: list[dict], query: str) -> list[dict]:
-    """Busca simples: todas as palavras precisam aparecer no nome ou na pasta."""
+    """Simple search: every word must appear in the name or the folder."""
     words = query.lower().split()
     return [
         b for b in library
@@ -53,11 +53,11 @@ def as_slot(brush: dict) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Varre pastas atrás de brushes .ZBP")
+    parser = argparse.ArgumentParser(description="Scans folders for .ZBP brushes")
     parser.add_argument("folders", nargs="+")
     parser.add_argument("--slots", action="store_true",
-                        help="imprime os brushes no formato de slot do menus.json")
-    parser.add_argument("--find", default="", help="filtra pelo nome")
+                        help="prints the brushes in menus.json slot format")
+    parser.add_argument("--find", default="", help="filters by name")
     args = parser.parse_args(argv)
 
     library = scan(args.folders)
